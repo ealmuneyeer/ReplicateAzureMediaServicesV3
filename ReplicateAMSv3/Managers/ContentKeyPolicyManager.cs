@@ -30,20 +30,17 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var contentKeyPolicy in contentKeyPolicies)
                 {
-                    //Console.WriteLine($"   Copying content key policy '{contentKeyPolicy.Name}'...");
                     Helpers.WriteLine($"Copying content key policy '{contentKeyPolicy.Name}'...", 2);
 
                     ContentKeyPolicyProperties tempContentKey = SourceOperations.GetPolicyPropertiesWithSecrets(SourceAuth.ResourceGroup, SourceAuth.AccountName, contentKeyPolicy.Name);
 
                     DestinationOperations.CreateOrUpdate(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, contentKeyPolicy.Name, tempContentKey.Options, tempContentKey.Description);
 
-                    //Console.WriteLine($"      Done");
                     Helpers.WriteLine($"Done", 3);
                 }
             }
             else
             {
-                //Console.WriteLine($"   No content key policies to replicate");
                 Helpers.WriteLine($"No content key policies to replicate", 2);
             }
         }

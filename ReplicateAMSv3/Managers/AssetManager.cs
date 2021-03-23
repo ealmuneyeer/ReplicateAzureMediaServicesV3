@@ -45,9 +45,6 @@ namespace ReplicateAMSv3.Managers
                 //Loop through page assets and move them to the destination
                 foreach (var asset in assetPage)
                 {
-                    //Console.WriteLine($"   Replicating asset '{asset.Name}'...");
-                    //Console.WriteLine($"      Copying asset's blobs...");
-
                     Helpers.WriteLine($"Replicating asset '{asset.Name}'...", 2);
                     Helpers.WriteLine($"Copying asset's blobs...", 3);
 
@@ -69,7 +66,6 @@ namespace ReplicateAMSv3.Managers
 
                     if (_sourceAssetFilterOperations != null && _destinationAssetFilterOperations != null)
                     {
-                        //Console.WriteLine($"      Copying asset's filters...");
                         Helpers.WriteLine($"Copying asset's filters...", 3);
                         ReplicateAssetFilter(asset.Name);
                     }
@@ -77,7 +73,6 @@ namespace ReplicateAMSv3.Managers
             }
             else
             {
-                //Console.WriteLine("   No assets to copy");
                 Helpers.WriteLine("No assets to copy", 2);
             }
         }
@@ -100,7 +95,6 @@ namespace ReplicateAMSv3.Managers
             }
             else
             {
-                //Console.WriteLine($"         No blobs to copy");
                 Helpers.WriteLine($"No blobs to copy", 4);
             }
         }
@@ -123,7 +117,6 @@ namespace ReplicateAMSv3.Managers
             var sourceBlobClient = sourceBlobContainer.GetBlockBlobReference(blobName);
             CloudBlockBlob destBlockBlob = destinationBlobContainer.GetBlockBlobReference(blobName);
 
-            //Console.WriteLine($"         Copying '{blobName}'...");
             Helpers.WriteLine($"Copying '{blobName}'...", 4);
 
             if (!destBlockBlob.Exists())
@@ -138,7 +131,6 @@ namespace ReplicateAMSv3.Managers
             }
             else
             {
-                //Console.WriteLine($"            Already exists");
                 Helpers.WriteLine($"Already exists", 5);
             }
         }
@@ -179,25 +171,20 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var assetFilter in assetFilterPage)
                 {
-                    //Console.WriteLine($"         Copying filter {assetFilter.Name}...");
                     Helpers.WriteLine($"Copying filter {assetFilter.Name}...", 4);
                     if (_destinationAssetFilterOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, assetName, assetFilter.Name) == null)
                     {
-                        //Console.WriteLine($"         Replicating filter {assetFilter.Name}...");
                         _destinationAssetFilterOperations.CreateOrUpdate(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, assetName, assetFilter.Name, assetFilter);
-                        //Console.WriteLine("            Done");
                         Helpers.WriteLine("Done", 5);
                     }
                     else
                     {
-                        //Console.WriteLine($"            Already exists");
                         Helpers.WriteLine($"Already exists", 5);
                     }
                 }
             }
             else
             {
-                //Console.WriteLine($"         No filters to copy");
                 Helpers.WriteLine($"No filters to copy", 4);
             }
         }

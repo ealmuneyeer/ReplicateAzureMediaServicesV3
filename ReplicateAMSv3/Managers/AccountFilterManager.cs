@@ -30,16 +30,13 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var accountFilter in accountFilterPage)
                 {
-                    //Console.WriteLine($"   Replicating account filter {accountFilter.Name}...");
                     Helpers.WriteLine($"Replicating account filter {accountFilter.Name}...", 2);
                     DestinationOperations.CreateOrUpdate(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, accountFilter.Name, accountFilter);
-                    //Console.WriteLine("      Done");
                     Helpers.WriteLine("Done", 3);
                 }
             }
             else
             {
-                //Console.WriteLine($"   No account filters to copy");
                 Helpers.WriteLine("No account filters to copy", 2);
             }
         }

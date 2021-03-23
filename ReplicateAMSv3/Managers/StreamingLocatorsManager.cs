@@ -31,7 +31,6 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var streamingLocator in streamingLocatorsPage)
                 {
-                    //Console.WriteLine($"   Copying streaming locator '{streamingLocator.Name}'...");
                     Helpers.WriteLine($"Copying streaming locator '{streamingLocator.Name}'...", 2);
 
                     if (DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, streamingLocator.Name) == null)
@@ -47,19 +46,16 @@ namespace ReplicateAMSv3.Managers
                             Filters = streamingLocator.Filters.Count == 0 ? null : streamingLocator.Filters
                         });
 
-                        //Console.WriteLine("      Done");
                         Helpers.WriteLine("Done", 3);
                     }
                     else
                     {
-                        //Console.WriteLine($"      Already exists");
                         Helpers.WriteLine($"Already exists", 3);
                     }
                 }
             }
             else
             {
-                //Console.WriteLine($"   No streaming locators to replicate");
                 Helpers.WriteLine($"No streaming locators to replicate", 2);
             }
         }

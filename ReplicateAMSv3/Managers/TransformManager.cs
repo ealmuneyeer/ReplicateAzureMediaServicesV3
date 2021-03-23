@@ -29,16 +29,13 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var transform in transforms)
                 {
-                    //Console.WriteLine($"   Copying transform '{transform.Name}'...");
                     Helpers.WriteLine($"Copying transform '{transform.Name}'...", 2);
                     DestinationOperations.CreateOrUpdate(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, transform.Name, transform.Outputs, transform.Description);
-                    //Console.WriteLine($"      Done");
                     Helpers.WriteLine($"Done", 3);
                 }
             }
             else
             {
-                //Console.WriteLine("   No transforms to copy");
                 Helpers.WriteLine("No transforms to copy", 2);
             }
         }

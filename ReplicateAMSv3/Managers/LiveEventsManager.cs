@@ -41,13 +41,11 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var liveEvent in liveEventsPage)
                 {
-                    //Console.WriteLine($"   Replicating live event '{liveEvent.Name}'...");
                     Helpers.WriteLine($"Replicating live event '{liveEvent.Name}'...", 2);
                     string tempResult = "";
 
                     if (DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, liveEvent.Name) == null)
                     {
-                        //Console.WriteLine($"      Copying live event...");
                         Helpers.WriteLine($"Copying live event...", 3);
 
                         LiveEvent tempLiveEvent = new LiveEvent()
@@ -71,12 +69,10 @@ namespace ReplicateAMSv3.Managers
                         DestinationOperations.Create(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, liveEvent.Name, tempLiveEvent);
 
                         tempResult = "Done";
-                        //Console.WriteLine("         Done");
                     }
                     else
                     {
                         tempResult = "Already exists";
-                        //Console.WriteLine("         Already exists");
                     }
                     Helpers.WriteLine(tempResult, 4);
 
@@ -86,14 +82,12 @@ namespace ReplicateAMSv3.Managers
             }
             else
             {
-                //Console.WriteLine("   No live events to copy");
                 Helpers.WriteLine("No live events to copy", 2);
             }
         }
 
         private void ReplicateLiveOutputs(string liveEventName)
         {
-            //Console.WriteLine("      Copying live outputs...");
             Helpers.WriteLine("Copying live outputs...", 3);
 
             IPage<LiveOutput> liveOutputsPage = _sourceLiveOutputOperations.List(SourceAuth.ResourceGroup, SourceAuth.AccountName, liveEventName);
@@ -112,19 +106,16 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var liveOutput in liveOutputsPage)
                 {
-                    //Console.WriteLine($"         Copying live output {liveOutput.Name}...");
                     Helpers.WriteLine($"Copying live output {liveOutput.Name}...", 4);
                     string tempResult = "";
 
                     if (_destinationLiveOutputOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, liveEventName, liveOutput.Name) == null)
                     {
                         _destinationLiveOutputOperations.Create(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, liveEventName, liveOutput.Name, liveOutput);
-                        //Console.WriteLine("            Done");
                         tempResult = "Done";
                     }
                     else
                     {
-                        //Console.WriteLine("            Already exists");
                         tempResult = "Already exists";
                     }
                     Helpers.WriteLine(tempResult, 5);
@@ -132,7 +123,6 @@ namespace ReplicateAMSv3.Managers
             }
             else
             {
-                //Console.WriteLine("         No live outputs");
                 Helpers.WriteLine("No live outputs", 4);
             }
         }

@@ -31,7 +31,6 @@ namespace ReplicateAMSv3.Managers
             {
                 foreach (var streamingEndpoint in streamingEndpointsPage)
                 {
-                    //Console.WriteLine($"   Copying streaming endpoint '{streamingEndpoint.Name}'...");
                     Helpers.WriteLine($"Copying streaming endpoint '{streamingEndpoint.Name}'...", 2);
 
                     if (DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, streamingEndpoint.Name) == null)
@@ -39,19 +38,16 @@ namespace ReplicateAMSv3.Managers
                         streamingEndpoint.Location = DestinationAuth.Location;
 
                         DestinationOperations.Create(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, streamingEndpoint.Name, streamingEndpoint);
-                        //Console.WriteLine("      Done");
                         Helpers.WriteLine("Done", 3);
                     }
                     else
                     {
-                        //Console.WriteLine("      Already exists");
                         Helpers.WriteLine("Already exists", 3);
                     }
                 }
             }
             else
             {
-                //Console.WriteLine("   No streaming endpoints to copy");
                 Helpers.WriteLine("No streaming endpoints to copy", 2);
             }
         }
