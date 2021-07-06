@@ -21,7 +21,9 @@ namespace ReplicateAMSv3
             AppDomain appDomain = AppDomain.CurrentDomain;
             appDomain.UnhandledException += AppDomain_UnhandledException;
 
-            Console.WriteLine($"Start replicating AMS account:-");
+            Helpers.CreateLogFile();
+
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Start replicating AMS account:-", 1);
 
             CacheSettings();
             CacheAmsClients().Wait();
@@ -50,7 +52,7 @@ namespace ReplicateAMSv3
 
             ReplicateLiveEvents();
 
-            Console.WriteLine($"{Environment.NewLine} Replication done successfully!");
+            Helpers.WriteLine($"{Environment.NewLine}[{DateTime.Now:dd/mm/yyyy HH:mm}] Replication done successfully!", 1);
             Console.ReadLine();
         }
 
@@ -61,7 +63,7 @@ namespace ReplicateAMSv3
 
         private static void AppDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            Console.WriteLine(Environment.NewLine + Environment.NewLine + "   ***** Exception occurred! *****");
+            Helpers.WriteLine(Environment.NewLine + Environment.NewLine + "   ***** Exception occurred! *****", 1);
 
             Exception ex = e.ExceptionObject as Exception;
 
@@ -70,12 +72,12 @@ namespace ReplicateAMSv3
                 ApiErrorException apiEx = ex as ApiErrorException;
                 if (apiEx.Body != null && apiEx.Body.Error != null)
                 {
-                    Console.WriteLine($"API error code '{apiEx.Body.Error.Code}' and message '{apiEx.Body.Error.Message}' {Environment.NewLine}");
+                    Helpers.WriteLine($"API error code '{apiEx.Body.Error.Code}' and message '{apiEx.Body.Error.Message}' {Environment.NewLine}", 1);
                 }
             }
 
-            Console.WriteLine($"Message: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Helpers.WriteLine($"Message: {ex.Message}", 1);
+            Helpers.WriteLine($"Stack trace: {ex.StackTrace}", 1);
         }
 
         private static void CacheSettings()
@@ -86,7 +88,7 @@ namespace ReplicateAMSv3
 
             IConfigurationSection configSection = configuration.GetSection("appConfig");
 
-            _appSettings = new AppSettings(configSection.GetSection("sourceConfig").Get<ServicePrincipalAuth>(), configSection.GetSection("destinationConfig").Get<ServicePrincipalAuth>());
+            _appSettings = new AppSettings(configSection.GetSection("sourceConfig").Get<ServicePrincipalAuth>(), configSection.GetSection("destinationConfig").Get<ServicePrincipalAuth>(), configSection.GetSection("miscellaneous").Get<Miscellaneous>());
         }
 
         private static async Task CacheAmsClients()
@@ -109,64 +111,64 @@ namespace ReplicateAMSv3
 
         private static bool ReplicateAccountFilters()
         {
-            Console.WriteLine(Environment.NewLine);
-            Console.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 1 of 7: Replicate account filters");
+            Helpers.WriteLine(Environment.NewLine, 1);
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 1 of 7: Replicate account filters", 1);
             AccountFilterManager accountFilterManager = new AccountFilterManager();
-            accountFilterManager.Initialize(_sourceClient.AccountFilters, _destinationClient.AccountFilters, _appSettings.Source, _appSettings.Destination);
+            accountFilterManager.Initialize(_sourceClient.AccountFilters, _destinationClient.AccountFilters, _appSettings.Source, _appSettings.Destination, _appSettings.Miscellaneous);
             return accountFilterManager.Replicate();
         }
 
         private static bool ReplicateContentKeyPolicies()
         {
-            Console.WriteLine(Environment.NewLine);
-            Console.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 2 of 7: Replicate content key policies");
+            Helpers.WriteLine(Environment.NewLine, 1);
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 2 of 7: Replicate content key policies", 1);
             ContentKeyPolicyManager contentKeyPolicyManager = new ContentKeyPolicyManager();
-            contentKeyPolicyManager.Initialize(_sourceClient.ContentKeyPolicies, _destinationClient.ContentKeyPolicies, _appSettings.Source, _appSettings.Destination);
+            contentKeyPolicyManager.Initialize(_sourceClient.ContentKeyPolicies, _destinationClient.ContentKeyPolicies, _appSettings.Source, _appSettings.Destination, _appSettings.Miscellaneous);
             return contentKeyPolicyManager.Replicate();
         }
 
         private static bool ReplicateTransforms()
         {
-            Console.WriteLine(Environment.NewLine);
-            Console.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 3 of 7: Replicate transforms");
+            Helpers.WriteLine(Environment.NewLine, 1);
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 3 of 7: Replicate transforms", 1);
             TransformManager transformManager = new TransformManager();
-            transformManager.Initialize(_sourceClient.Transforms, _destinationClient.Transforms, _appSettings.Source, _appSettings.Destination);
+            transformManager.Initialize(_sourceClient.Transforms, _destinationClient.Transforms, _appSettings.Source, _appSettings.Destination, _appSettings.Miscellaneous);
             return transformManager.Replicate();
         }
 
         private static bool ReplicateStreamingEndpoints()
         {
-            Console.WriteLine(Environment.NewLine);
-            Console.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 4 of 7: Replicate streaming endpoints");
+            Helpers.WriteLine(Environment.NewLine, 1);
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 4 of 7: Replicate streaming endpoints", 1);
             StreamingEndpointManager streamingEndpointManager = new StreamingEndpointManager();
-            streamingEndpointManager.Initialize(_sourceClient.StreamingEndpoints, _destinationClient.StreamingEndpoints, _appSettings.Source, _appSettings.Destination);
+            streamingEndpointManager.Initialize(_sourceClient.StreamingEndpoints, _destinationClient.StreamingEndpoints, _appSettings.Source, _appSettings.Destination, _appSettings.Miscellaneous);
             return streamingEndpointManager.Replicate();
         }
 
         private static bool ReplicateAssets()
         {
-            Console.WriteLine(Environment.NewLine);
-            Console.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 5 of 7: Replicate assets");
+            Helpers.WriteLine(Environment.NewLine, 1);
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 5 of 7: Replicate assets", 1);
             AssetManager assetManager = new AssetManager();
-            assetManager.Initialize(_sourceClient.Assets, _destinationClient.Assets, _appSettings.Source, _appSettings.Destination, _sourceClient.AssetFilters, _destinationClient.AssetFilters);
+            assetManager.Initialize(_sourceClient.Assets, _destinationClient.Assets, _appSettings.Source, _appSettings.Destination, _appSettings.Miscellaneous, _sourceClient.AssetFilters, _destinationClient.AssetFilters);
             return assetManager.Replicate();
         }
 
         private static bool ReplicateLiveEvents()
         {
-            Console.WriteLine(Environment.NewLine);
-            Console.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 7 of 7: Replicate live events");
+            Helpers.WriteLine(Environment.NewLine, 1);
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 7 of 7: Replicate live events", 1);
             LiveEventsManager liveEventsManager = new LiveEventsManager();
-            liveEventsManager.Initialize(_sourceClient.LiveEvents, _destinationClient.LiveEvents, _appSettings.Source, _appSettings.Destination, _sourceClient.LiveOutputs, _destinationClient.LiveOutputs);
+            liveEventsManager.Initialize(_sourceClient.LiveEvents, _destinationClient.LiveEvents, _appSettings.Source, _appSettings.Destination, _appSettings.Miscellaneous, _sourceClient.LiveOutputs, _destinationClient.LiveOutputs);
             return liveEventsManager.Replicate();
         }
 
         private static bool ReplicateStreamingLocators()
         {
-            Console.WriteLine(Environment.NewLine);
-            Console.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 6 of 7: Replicate streaming locators");
+            Helpers.WriteLine(Environment.NewLine, 1);
+            Helpers.WriteLine($"[{DateTime.Now:dd/mm/yyyy HH:mm}] Step 6 of 7: Replicate streaming locators", 1);
             StreamingLocatorsManager streamingLocatorsManager = new StreamingLocatorsManager();
-            streamingLocatorsManager.Initialize(_sourceClient.StreamingLocators, _destinationClient.StreamingLocators, _appSettings.Source, _appSettings.Destination);
+            streamingLocatorsManager.Initialize(_sourceClient.StreamingLocators, _destinationClient.StreamingLocators, _appSettings.Source, _appSettings.Destination, _appSettings.Miscellaneous);
             return streamingLocatorsManager.Replicate();
         }
     }

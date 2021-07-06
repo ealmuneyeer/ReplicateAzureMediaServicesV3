@@ -12,12 +12,14 @@ namespace ReplicateAMSv3
         {
             Source = null;
             Destination = null;
+            Miscellaneous = new Miscellaneous();
         }
 
-        public AppSettings(ServicePrincipalAuth source, ServicePrincipalAuth destination)
+        public AppSettings(ServicePrincipalAuth source, ServicePrincipalAuth destination, Miscellaneous miscellaneous)
         {
             Source = source;
             Destination = destination;
+            Miscellaneous = miscellaneous;
         }
 
         [JsonProperty("sourceConfig")]
@@ -25,6 +27,9 @@ namespace ReplicateAMSv3
 
         [JsonProperty("destinationConfig")]
         public ServicePrincipalAuth Destination { get; set; }
+
+        [JsonProperty("miscellaneous")]
+        public Miscellaneous Miscellaneous { get; set; }
     }
 
     [JsonObject]
@@ -68,5 +73,18 @@ namespace ReplicateAMSv3
 
         [JsonProperty("StorageAccountUrl")]
         public Uri StorageAccountUrl { get; set; }
+    }
+
+    [JsonObject]
+    public class Miscellaneous
+    {
+        [JsonProperty("UseAzCopy")]
+        public bool UseAzCopy { get; set; } = false;
+
+        [JsonProperty("AzCopyExe")]
+        public string AzCopyExe { get; set; } = "";
+
+        [JsonProperty("AzCopyPreserveAccessTier")]
+        public bool AzCopyPreserveAccessTier { get; set; } = false;
     }
 }

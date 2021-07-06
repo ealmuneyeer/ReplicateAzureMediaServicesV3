@@ -13,9 +13,9 @@ namespace ReplicateAMSv3.Managers
         private ILiveOutputsOperations _sourceLiveOutputOperations;
         private ILiveOutputsOperations _destinationLiveOutputOperations;
 
-        public void Initialize(ILiveEventsOperations sourceOperations, ILiveEventsOperations destinationOperations, ServicePrincipalAuth sourceAuth, ServicePrincipalAuth destinationAuth, ILiveOutputsOperations sourceLiveOutputOperations, ILiveOutputsOperations destinationLiveOutputOperations)
+        public void Initialize(ILiveEventsOperations sourceOperations, ILiveEventsOperations destinationOperations, ServicePrincipalAuth sourceAuth, ServicePrincipalAuth destinationAuth, Miscellaneous miscellaneous, ILiveOutputsOperations sourceLiveOutputOperations, ILiveOutputsOperations destinationLiveOutputOperations)
         {
-            Initialize(sourceOperations, destinationOperations, sourceAuth, destinationAuth);
+            Initialize(sourceOperations, destinationOperations, sourceAuth, destinationAuth, miscellaneous);
 
             _sourceLiveOutputOperations = sourceLiveOutputOperations;
             _destinationLiveOutputOperations = destinationLiveOutputOperations;
