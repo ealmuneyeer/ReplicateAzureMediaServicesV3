@@ -39,9 +39,7 @@ namespace ReplicateAMSv3
 
         public static void WriteLine(string message, int level)
         {
-            level = level >= 1 ? level : 1;
-
-            string msg = $"{new string(' ', (level - 1) * 3)}{message}";
+            string msg = FormatTraceMessage(message, level);
             Console.WriteLine(msg);
 
             try
@@ -52,6 +50,28 @@ namespace ReplicateAMSv3
             {
                 //do nothing
             }
+        }
+
+        public static void Write(string message, int level)
+        {
+            string msg = FormatTraceMessage(message, level);
+            Console.Write(msg);
+
+            try
+            {
+                File.AppendAllText(logFile, msg);
+            }
+            catch (Exception ex)
+            {
+                //do nothing
+            }
+        }
+
+        private static string FormatTraceMessage(string message, int level)
+        {
+            level = level >= 1 ? level : 1;
+
+            return $"{new string(' ', (level - 1) * 3)}{message}";
         }
 
         public static void CreateLogFile()

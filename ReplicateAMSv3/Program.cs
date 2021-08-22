@@ -38,6 +38,8 @@ namespace ReplicateAMSv3
 
             Helpers.WriteLine(FormatMoveMessage("Location", _appSettings.Source.Location, _appSettings.Destination.Location), 2);
 
+            Helpers.WriteLine("Copy Using Local Network: " + _appSettings.Miscellaneous.CopyUsingLocalNetwork, 2);
+
             ReplicateAccountFilters();
 
             ReplicateContentKeyPolicies();

@@ -78,13 +78,7 @@ namespace ReplicateAMSv3
     [JsonObject]
     public class Miscellaneous
     {
-        [JsonProperty("UseAzCopy")]
-        public bool UseAzCopy { get; set; } = false;
-
-        [JsonProperty("AzCopyExe")]
-        public string AzCopyExe { get; set; } = "";
-
-        [JsonProperty("AzCopyPreserveAccessTier")]
-        public bool AzCopyPreserveAccessTier { get; set; } = false;
+        [JsonProperty("CopyUsingLocalNetwork")]
+        public bool CopyUsingLocalNetwork { get; set; } = false;
     }
 }

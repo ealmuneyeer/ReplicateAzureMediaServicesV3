@@ -25,13 +25,13 @@ namespace ReplicateAMSv3
                 switch (_lastProgress)
                 {
                     case 0:
-                        Console.Write($"            --> %{_lastProgress}");
+                        Helpers.Write($"{_lastProgress}%", 1);
                         break;
                     case 100:
-                        Console.WriteLine($" --> %{_lastProgress}");
+                        Helpers.WriteLine($" --> {_lastProgress}%", 1);
                         break;
                     default:
-                        Console.Write($" --> %{_lastProgress}");
+                        Helpers.Write($" --> {_lastProgress}%", 1);
                         break;
                 }
             }
