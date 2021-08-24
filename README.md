@@ -22,6 +22,7 @@ It will replicate the following:
   <li>The tool has been tested. However, there is no guarantees that there is no bugs, use it on your own responsibility.</li>
   <li>There could be some Azure charges for copying the blobs depending on the used mechanisim and source and destination datacenters</li>
   <li>Feel free to adjust the tool to meet your needs.</li>
+  <li>This is not an official tool supported by Microsoft.</li>
 </ol>
 
 
