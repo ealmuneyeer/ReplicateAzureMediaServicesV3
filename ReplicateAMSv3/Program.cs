@@ -38,6 +38,10 @@ namespace ReplicateAMSv3
 
             Helpers.WriteLine(FormatMoveMessage("Location", _appSettings.Source.Location, _appSettings.Destination.Location), 2);
 
+            Helpers.WriteLine("Source AAD Settings: " + _appSettings.Source.AADSettings, 2);
+
+            Helpers.WriteLine("Destination AAD Settings: " + _appSettings.Destination.AADSettings, 2);
+
             Helpers.WriteLine("Copy Using Local Network: " + _appSettings.Miscellaneous.CopyUsingLocalNetwork, 2);
 
             ReplicateAccountFilters();
@@ -103,7 +107,7 @@ namespace ReplicateAMSv3
         {
             ClientCredential clientCredential = new ClientCredential(spAuth.AadClientId, spAuth.AadSecret);
 
-            ServiceClientCredentials serviceCredential = await ApplicationTokenProvider.LoginSilentAsync(spAuth.AadTenantId, clientCredential, ActiveDirectoryServiceSettings.Azure);
+            ServiceClientCredentials serviceCredential = await ApplicationTokenProvider.LoginSilentAsync(spAuth.AadTenantId, clientCredential, Helpers.GetActiveDirectoryServiceSettings(spAuth.AADSettings));
 
             return new AzureMediaServicesClient(spAuth.ArmEndpoint, serviceCredential)
             {

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.Storage.Auth;
 using Microsoft.Azure.Storage.Blob;
+using Microsoft.Rest.Azure.Authentication;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -84,6 +85,26 @@ namespace ReplicateAMSv3
             }
 
             using (File.Create(logFile)) { }
+        }
+
+        public static ActiveDirectoryServiceSettings GetActiveDirectoryServiceSettings(string aadSettings)
+        {
+            switch (aadSettings.ToLower())
+            {
+                case "azure":
+                    return ActiveDirectoryServiceSettings.Azure;
+
+                case "azurechina":
+                    return ActiveDirectoryServiceSettings.AzureChina;
+
+                case "azureusgovernment":
+                    return ActiveDirectoryServiceSettings.AzureUSGovernment;
+
+                default:
+                    WriteLine($"'{aadSettings}' is unknown Azure Active Directory Settings. Use 'Azure' instead", 1);
+                    return ActiveDirectoryServiceSettings.Azure;
+
+            }
         }
     }
 }

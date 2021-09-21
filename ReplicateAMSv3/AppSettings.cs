@@ -73,6 +73,9 @@ namespace ReplicateAMSv3
 
         [JsonProperty("StorageAccountUrl")]
         public Uri StorageAccountUrl { get; set; }
+
+        [JsonProperty("AADSettings")]
+        public string AADSettings { get; set; }
     }
 
     [JsonObject]
