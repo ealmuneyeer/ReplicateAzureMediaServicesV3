@@ -43,7 +43,8 @@ namespace ReplicateAMSv3.Managers
                             EndTime = streamingLocator.EndTime,
                             DefaultContentKeyPolicyName = streamingLocator.DefaultContentKeyPolicyName,
                             ContentKeys = streamingLocator.ContentKeys.Count == 0 ? null : streamingLocator.ContentKeys,
-                            Filters = streamingLocator.Filters.Count == 0 ? null : streamingLocator.Filters
+                            Filters = streamingLocator.Filters.Count == 0 ? null : streamingLocator.Filters,
+                            StreamingLocatorId = streamingLocator.StreamingLocatorId
                         });
 
                         Helpers.WriteLine("Done", 3);

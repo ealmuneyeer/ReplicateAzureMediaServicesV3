@@ -83,5 +83,8 @@ namespace ReplicateAMSv3
     {
         [JsonProperty("CopyUsingLocalNetwork")]
         public bool CopyUsingLocalNetwork { get; set; } = false;
+
+        [JsonProperty("CopyUsingAzCopy")]
+        public bool CopyUsingAzCopy { get; set; } = false;
     }
 }

@@ -1,4 +1,6 @@
-﻿using Microsoft.Azure.Management.Media;
+﻿using Azure.Storage;
+using Azure.Storage.Sas;
+using Microsoft.Azure.Management.Media;
 using Microsoft.Azure.Management.Media.Models;
 using Microsoft.Azure.Storage.Auth;
 using Microsoft.Azure.Storage.Blob;
@@ -25,6 +27,15 @@ namespace ReplicateAMSv3.Managers
         //6: Destination container SAS
         //7: Preserve access tier
         private const string AZ_COPY_COMMAND = "\"{0}\" copy \"https://{1}.blob.core.windows.net/{2}{3}\" \"https://{4}.blob.core.windows.net/{5}{6}\" --recursive --overwrite=ifSourceNewer --s2s-preserve-access-tier={7}";
+        
+        //0: Source storage account name
+        //1: Source container name
+        //2: Source container SAS
+        //3: Destination storage account name
+        //4: Destination storage container name
+        //5: Destination container SAS
+        //6: Preserve access tier
+        private const string AZ_COPY_ARGUMENTS = "copy \"https://{0}.blob.core.windows.net/{1}?{2}\" \"https://{3}.blob.core.windows.net/{4}?{5}\" --recursive --overwrite=ifSourceNewer --s2s-preserve-access-tier={6}";
 
         public void Initialize(IAssetsOperations sourceOperations, IAssetsOperations destinationOperations, ServicePrincipalAuth sourceAuth, ServicePrincipalAuth destinationAuth, Miscellaneous miscellaneous, IAssetFiltersOperations sourceAssetFiltersOperations, IAssetFiltersOperations destinationAssetFiltersOperations)
         {
@@ -70,16 +81,26 @@ namespace ReplicateAMSv3.Managers
                     //Used to update asset info. sometimes it will be empty
                     destinationAsset = DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, destinationAsset.Name);
 
-                    CloudBlobContainer sourceContainer = GetCloudBlobContainer(SourceAuth, asset.Container);
-                    CloudBlobContainer destinationContainer = GetCloudBlobContainer(DestinationAuth, destinationAsset.Container);
+                    if (Miscellaneous.CopyUsingAzCopy)
+                    {
+                        var sourceSasToken = GetAccountSASToken(new StorageSharedKeyCredential(SourceAuth.StorageAccountName, SourceAuth.StorageAccountKey));
+                        var targetSasToken = GetAccountSASToken(new StorageSharedKeyCredential(DestinationAuth.StorageAccountName, DestinationAuth.StorageAccountKey));
+                        CopyAssetWithAzCopy(ParseAzCopyArgumentString(SourceAuth.StorageAccountName, asset.Container, sourceSasToken, DestinationAuth.StorageAccountName, destinationAsset.Container, targetSasToken));
+                    }
+                    else
+                    {
+                        CloudBlobContainer sourceContainer = GetCloudBlobContainer(SourceAuth, asset.Container);
+                        CloudBlobContainer destinationContainer = GetCloudBlobContainer(DestinationAuth, destinationAsset.Container);
 
-                    CopyAsset(sourceContainer, destinationContainer);
+                        CopyAsset(sourceContainer, destinationContainer);
+                    }                    
 
                     if (_sourceAssetFilterOperations != null && _destinationAssetFilterOperations != null)
                     {
                         Helpers.WriteLine($"Copying asset's filters...", 3);
                         ReplicateAssetFilter(asset.Name);
                     }
+                    Helpers.WriteLine($"Replicating asset '{asset.Name}' finished", 2);
                 }
             }
             else
@@ -267,6 +288,38 @@ namespace ReplicateAMSv3.Managers
             {
                 Helpers.WriteLine($"No filters to copy", 4);
             }
+        }
+
+        private static string GetAccountSASToken(StorageSharedKeyCredential key)
+        {
+            AccountSasBuilder sasBuilder = new AccountSasBuilder()
+            {
+                Services = AccountSasServices.All,
+                ResourceTypes = AccountSasResourceTypes.All,
+                ExpiresOn = DateTimeOffset.UtcNow.AddHours(1),
+                Protocol = SasProtocol.Https
+            };
+            sasBuilder.SetPermissions(AccountSasPermissions.All);
+            string sasToken = sasBuilder.ToSasQueryParameters(key).ToString();
+            return sasToken;
+        }
+
+        private string ParseAzCopyArgumentString(string sourceBlobStorageName, string sourceContainerName, string sourceSasToken, string targetBlobStorageName, string targetContainerName, string targetSasToken, bool preseveAccessTier = true)
+        {
+            return string.Format(AZ_COPY_ARGUMENTS, sourceBlobStorageName, sourceContainerName, sourceSasToken, targetBlobStorageName, targetContainerName, targetSasToken, preseveAccessTier);
+        }
+
+        private void CopyAssetWithAzCopy(string azcopyArguments)
+        {
+            var process = new Process();
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "azcopy.exe",
+                Arguments = $"{azcopyArguments}"
+            };
+            process.StartInfo = startInfo;
+            process.Start();
+            process.WaitForExit();
         }
     }
 }

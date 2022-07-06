@@ -22,9 +22,7 @@ It will replicate the following:
   <li>The tool has been tested. However, there is no guarantees that there is no bugs, use it on your own responsibility.</li>
   <li>There could be some Azure charges for copying the blobs depending on the used mechanisim and source and destination datacenters</li>
   <li>Feel free to adjust the tool to meet your needs.</li>
-  <li>This is not an official tool supported by Microsoft.</li>
 </ol>
-
 
 
 # How to use this tool
@@ -32,4 +30,13 @@ It will replicate the following:
 To run this application you need to:
 <ol>
   <li>Modify <b><i>appsettings.json</b></i> configuration file with your source and destination AMS accounts service principal authentication, and storage accounts name, key, and Url </li>
+</ol>
+
+# Activating Fast Deploy with AzCopy
+
+These are the steps to activate quick replication with the help of AzCopy
+<ol>
+  <li>Install azcopy via chocolatey: See [azcopy10](https://community.chocolatey.org/packages/azcopy10)</li>
+  <li>Switch the "CopyUsingAzCopy"-Flag in <b><i>appsettings.json</b></i> to true.</li>
+  <li>After replication you only need to adjust the first part of the streaming urls to your new AMS Account</li>
 </ol>
