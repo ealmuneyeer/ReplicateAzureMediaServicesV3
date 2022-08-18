@@ -1,6 +1,4 @@
-﻿using Microsoft.Azure.Storage.Auth;
-using Microsoft.Azure.Storage.Blob;
-using Microsoft.Rest.Azure.Authentication;
+﻿using Microsoft.Rest.Azure.Authentication;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,32 +6,6 @@ using System.Text;
 
 namespace ReplicateAMSv3
 {
-    public static class Extensions
-    {
-        public enum BlobType
-        {
-            Unknown,
-            BlockBlock,
-            Directory
-        }
-
-        public static BlobType GetBlobType(this IListBlobItem blobItem)
-        {
-            if (blobItem.GetType() == typeof(CloudBlobDirectory))
-            {
-                return BlobType.Directory;
-            }
-            else if (blobItem.GetType() == typeof(CloudBlockBlob))
-            {
-                return BlobType.BlockBlock;
-            }
-            else
-            {
-                return BlobType.Unknown;
-            }
-        }
-    }
-
     public static class Helpers
     {
         private static string logFile;
@@ -75,7 +47,7 @@ namespace ReplicateAMSv3
             return $"{new string(' ', (level - 1) * 3)}{message}";
         }
 
-        public static void CreateLogFile()
+        public static string CreateLogFile()
         {
             logFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", DateTime.Now.ToString("yyyyMMddHHmmss") + ".txt");
 
@@ -85,6 +57,8 @@ namespace ReplicateAMSv3
             }
 
             using (File.Create(logFile)) { }
+
+            return logFile;
         }
 
         public static ActiveDirectoryServiceSettings GetActiveDirectoryServiceSettings(string aadSettings)

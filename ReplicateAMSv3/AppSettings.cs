@@ -8,6 +8,13 @@ namespace ReplicateAMSv3
     [JsonObject("appConfig")]
     public class AppSettings
     {
+        public class UploadMedium
+        {
+            public const string AZ_COPY = "azcopy";
+            public const string SDK = "sdk";
+            public const string LOCAL_NETWORK = "network";
+        }
+
         public AppSettings()
         {
             Source = null;
@@ -81,7 +88,13 @@ namespace ReplicateAMSv3
     [JsonObject]
     public class Miscellaneous
     {
-        [JsonProperty("CopyUsingLocalNetwork")]
-        public bool CopyUsingLocalNetwork { get; set; } = false;
+        [JsonProperty("UploadMedium")]
+        public string UploadMedium { get; set; }
+
+        [JsonProperty("AzCopyExePath")]
+        public string AzCopyExePath { get; set; }
+
+        [JsonProperty("AzCopyPreserveAccessTier")]
+        public bool AzCopyPreserveAccessTier { get; set; }
     }
 }

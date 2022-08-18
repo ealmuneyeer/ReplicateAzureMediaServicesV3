@@ -12,6 +12,7 @@ namespace ReplicateAMSv3.Managers
     {
         private ILiveOutputsOperations _sourceLiveOutputOperations;
         private ILiveOutputsOperations _destinationLiveOutputOperations;
+        private List<LiveEvent> _destLiveEvents;
 
         public void Initialize(ILiveEventsOperations sourceOperations, ILiveEventsOperations destinationOperations, ServicePrincipalAuth sourceAuth, ServicePrincipalAuth destinationAuth, Miscellaneous miscellaneous, ILiveOutputsOperations sourceLiveOutputOperations, ILiveOutputsOperations destinationLiveOutputOperations)
         {
@@ -23,6 +24,8 @@ namespace ReplicateAMSv3.Managers
 
         public override bool Replicate()
         {
+            CacheDestinationLiveEvents();
+
             IPage<LiveEvent> liveEventsPage = SourceOperations.List(SourceAuth.ResourceGroup, SourceAuth.AccountName);
             ReplicateLiveEventsPage(liveEventsPage);
 
@@ -35,6 +38,11 @@ namespace ReplicateAMSv3.Managers
             return true;
         }
 
+        private void CacheDestinationLiveEvents()
+        {
+            _destLiveEvents = DestinationOperations.List(DestinationAuth.ResourceGroup, DestinationAuth.AccountName).ToList();
+        }
+
         private void ReplicateLiveEventsPage(IPage<LiveEvent> liveEventsPage)
         {
             if (liveEventsPage.Any())
@@ -44,7 +52,7 @@ namespace ReplicateAMSv3.Managers
                     Helpers.WriteLine($"Replicating live event '{liveEvent.Name}'...", 2);
                     string tempResult = "";
 
-                    if (DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, liveEvent.Name) == null)
+                    if (!_destLiveEvents.Any(e => e.Name.Equals(liveEvent.Name, StringComparison.InvariantCultureIgnoreCase)))
                     {
                         Helpers.WriteLine($"Copying live event...", 3);
 

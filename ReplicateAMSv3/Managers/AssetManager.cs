@@ -1,13 +1,15 @@
-﻿using Microsoft.Azure.Management.Media;
+﻿using Azure;
+using Azure.Storage;
+using Azure.Storage.Blobs;
+using Azure.Storage.Blobs.Models;
+using Azure.Storage.Sas;
+using Microsoft.Azure.Management.Media;
 using Microsoft.Azure.Management.Media.Models;
-using Microsoft.Azure.Storage.Auth;
-using Microsoft.Azure.Storage.Blob;
 using Microsoft.Rest.Azure;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 
 namespace ReplicateAMSv3.Managers
 {
@@ -24,7 +26,7 @@ namespace ReplicateAMSv3.Managers
         //5: Destination storage container name
         //6: Destination container SAS
         //7: Preserve access tier
-        private const string AZ_COPY_COMMAND = "\"{0}\" copy \"https://{1}.blob.core.windows.net/{2}{3}\" \"https://{4}.blob.core.windows.net/{5}{6}\" --recursive --overwrite=ifSourceNewer --s2s-preserve-access-tier={7}";
+        private const string AZ_COPY_COMMAND = "\"{0}\" copy \"{1}\" \"{2}\" --recursive --overwrite=ifSourceNewer --s2s-preserve-access-tier={3}";
 
         public void Initialize(IAssetsOperations sourceOperations, IAssetsOperations destinationOperations, ServicePrincipalAuth sourceAuth, ServicePrincipalAuth destinationAuth, Miscellaneous miscellaneous, IAssetFiltersOperations sourceAssetFiltersOperations, IAssetFiltersOperations destinationAssetFiltersOperations)
         {
@@ -57,21 +59,14 @@ namespace ReplicateAMSv3.Managers
                 foreach (var asset in assetPage)
                 {
                     Helpers.WriteLine($"Replicating asset '{asset.Name}'...", 2);
-                    Helpers.WriteLine($"Copying asset's blobs...", 3);
 
-                    Asset destinationAsset = DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, asset.Name);
-
-                    //Create destination asset if it does not exists
-                    if (destinationAsset == null)
-                    {
-                        destinationAsset = DestinationOperations.CreateOrUpdate(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, asset.Name, new Asset() { AlternateId = asset.AlternateId, Description = asset.Description });
-                    }
+                    Asset destinationAsset = DestinationOperations.CreateOrUpdate(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, asset.Name, new Asset() { AlternateId = asset.AlternateId, Description = asset.Description });
 
                     //Used to update asset info. sometimes it will be empty
                     destinationAsset = DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, destinationAsset.Name);
 
-                    CloudBlobContainer sourceContainer = GetCloudBlobContainer(SourceAuth, asset.Container);
-                    CloudBlobContainer destinationContainer = GetCloudBlobContainer(DestinationAuth, destinationAsset.Container);
+                    BlobContainerClient sourceContainer = GetBlobContainerClient(SourceAuth, asset.Container);
+                    BlobContainerClient destinationContainer = GetBlobContainerClient(DestinationAuth, destinationAsset.Container);
 
                     CopyAsset(sourceContainer, destinationContainer);
 
@@ -88,20 +83,61 @@ namespace ReplicateAMSv3.Managers
             }
         }
 
-        private CloudBlobContainer GetCloudBlobContainer(ServicePrincipalAuth servicePrincipalAuth, string containerName)
+        private BlobContainerClient GetBlobContainerClient(ServicePrincipalAuth servicePrincipalAuth, string containerName)
         {
-            return new CloudBlobContainer(new Uri(servicePrincipalAuth.StorageAccountUrl.ToString() + containerName), new StorageCredentials(servicePrincipalAuth.StorageAccountName, servicePrincipalAuth.StorageAccountKey));
+            return new BlobContainerClient(new Uri(servicePrincipalAuth.StorageAccountUrl.ToString() + containerName), new StorageSharedKeyCredential(servicePrincipalAuth.StorageAccountName, servicePrincipalAuth.StorageAccountKey));
         }
 
-        private void CopyAsset(CloudBlobContainer sourceContainer, CloudBlobContainer destinationContainer)
+        private void CopyAsset(BlobContainerClient sourceContainer, BlobContainerClient destinationContainer)
         {
-            var sourceBlobs = sourceContainer.ListBlobs();
+            List<BlobItem> sourceBlobs = new List<BlobItem>();
+            List<BlobItem> destBlobs = new List<BlobItem>();
+
+            sourceBlobs.AddRange(sourceContainer.GetBlobs().ToList());
+
+            Helpers.WriteLine($"Copying asset's {sourceBlobs.Count.ToString("N0")} blob(s)...", 3);
 
             if (sourceBlobs.Any())
             {
-                foreach (var sourceBlobItem in sourceBlobs)
+                //Fill blobs in the destination
+                destBlobs.AddRange(destinationContainer.GetBlobs().ToList());
+
+                //Get blobs that exists in destination
+                var intersect = sourceBlobs.Select(i => i.Name).Intersect(destBlobs.Select(i => i.Name)).ToList();
+
+                long totalCount = sourceBlobs.Count;
+                long copiedCount = intersect.Count;
+                string existingBlobsMsg = $"Existing blobs: {intersect.Count.ToString("N0")}/{sourceBlobs.Count.ToString("N0")}";
+
+                if (intersect.Any())
                 {
-                    CopyBlobItem(sourceBlobItem, sourceContainer, destinationContainer);
+                    intersect.ForEach(item =>
+                    {
+                        sourceBlobs.Remove(sourceBlobs.First(i => i.Name == item));
+                    });
+                }
+
+                //Check if there are any remaining blobs in the source to copy
+                if (sourceBlobs.Any())
+                {
+                    Helpers.WriteLine($"{existingBlobsMsg} --> Copying {sourceBlobs.Count.ToString("N0")} blob(s)...", 4);
+
+                    if (Miscellaneous.UploadMedium.Equals(AppSettings.UploadMedium.AZ_COPY, StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        CopyAssetAzCopy(sourceContainer, destinationContainer);
+                    }
+                    else
+                    {
+                        foreach (var sourceBlobItem in sourceBlobs)
+                        {
+                            copiedCount++;
+                            CopyBlockBlob(sourceBlobItem.Name, sourceContainer, destinationContainer, $"{copiedCount.ToString("N0")}/{totalCount.ToString("N0")}");
+                        }
+                    }
+                }
+                else
+                {
+                    Helpers.WriteLine($"{existingBlobsMsg} --> No need to copy", 4);
                 }
             }
             else
@@ -110,38 +146,25 @@ namespace ReplicateAMSv3.Managers
             }
         }
 
-        private void CopyBlobItem(IListBlobItem blobItem, CloudBlobContainer sourceBlobContainer, CloudBlobContainer destinationBlobContainer)
+        private void CopyBlockBlob(string blobName, BlobContainerClient sourceBlobContainer, BlobContainerClient destinationBlobContainer, string progress)
         {
-            if (blobItem.GetBlobType() == Extensions.BlobType.Directory)
+            BlobClient sourceBlobClient = sourceBlobContainer.GetBlobClient(blobName);
+            BlobClient destBlobClient = destinationBlobContainer.GetBlobClient(blobName);
+
+            Helpers.WriteLine($"({progress}) Copying '{blobName}'...", 4);
+
+            if (!destBlobClient.Exists())
             {
-                CopyBlobDirectory(sourceBlobContainer, destinationBlobContainer, blobItem as CloudBlobDirectory);
-            }
-            else
-            {
-                var blobName = blobItem.Uri.Segments[^1];
-                CopyBlockBlob(blobName, sourceBlobContainer, destinationBlobContainer);
-            }
-        }
+                Response<BlobProperties> blobProperties = sourceBlobClient.GetProperties();
+                Helpers.Write($"{blobProperties.Value.ContentLength:n0} byte(s): ", 5);
 
-        private void CopyBlockBlob(string blobName, CloudBlobContainer sourceBlobContainer, CloudBlobContainer destinationBlobContainer)
-        {
-            CloudBlockBlob sourceBlobClient = sourceBlobContainer.GetBlockBlobReference(blobName);
-            CloudBlockBlob destBlockBlob = destinationBlobContainer.GetBlockBlobReference(blobName);
-
-            Helpers.WriteLine($"Copying '{blobName}'...", 4);
-
-            if (!destBlockBlob.Exists())
-            {
-                sourceBlobClient.FetchAttributes();
-                Helpers.Write($"{sourceBlobClient.Properties.Length:n0} byte(s): ", 5);
-
-                if (Miscellaneous.CopyUsingLocalNetwork)
+                if (Miscellaneous.UploadMedium.Equals(AppSettings.UploadMedium.LOCAL_NETWORK, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    CopyBlockBlobUsingLocalNetwork(sourceBlobClient, destBlockBlob);
+                    CopyBlockBlobUsingLocalNetwork(sourceBlobClient, destBlobClient);
                 }
                 else
                 {
-                    CopyBlockBlobBetweenDCs(sourceBlobClient, destBlockBlob);
+                    CopyBlockBlobBetweenDCs(sourceBlobClient, destBlobClient);
                 }
             }
             else
@@ -150,36 +173,33 @@ namespace ReplicateAMSv3.Managers
             }
         }
 
-        private void CopyBlockBlobBetweenDCs(CloudBlockBlob sourceBlobClient, CloudBlockBlob destBlockBlob)
+        private void CopyBlockBlobBetweenDCs(BlobClient sourceBlobClient, BlobClient destBlobClient)
         {
-            var sourceBlobSAS = sourceBlobClient.GetSharedAccessSignature(new SharedAccessBlobPolicy()
-            {
-                Permissions = SharedAccessBlobPermissions.Read | SharedAccessBlobPermissions.List,
-                SharedAccessStartTime = DateTime.Now.AddMinutes(-5),
-                SharedAccessExpiryTime = DateTime.Now.AddDays(1)
-            });
+            var sourceBlobSAS = sourceBlobClient.GenerateSasUri(BlobSasPermissions.Read | BlobSasPermissions.List, DateTime.Now.AddDays(1));
 
-            destBlockBlob.StartCopy(new Uri(sourceBlobClient.Uri + sourceBlobSAS));
+            destBlobClient.StartCopyFromUri(sourceBlobSAS);
 
             int lastProgress = 0;
             int tempProgress = 0;
+            string[] progress;
 
             Helpers.Write($"{lastProgress}%", 1);
 
             while (true)
             {
-                destBlockBlob.FetchAttributes();
+                var destBlobProperties = destBlobClient.GetProperties();
 
-                if (destBlockBlob.CopyState.Status == CopyStatus.Success)
+                if (destBlobProperties.Value.BlobCopyStatus == CopyStatus.Success)
                 {
                     Helpers.WriteLine($" --> 100%", 1);
                     break;
                 }
-                else if (destBlockBlob.CopyState.Status == CopyStatus.Pending)
+                else if (destBlobProperties.Value.BlobCopyStatus == CopyStatus.Pending)
                 {
-                    if (destBlockBlob.CopyState.BytesCopied != null && destBlockBlob.CopyState.TotalBytes != null)
+                    if (destBlobProperties.Value.CopyProgress != null)
                     {
-                        tempProgress = (int)(Convert.ToDecimal(destBlockBlob.CopyState.BytesCopied) / Convert.ToDecimal(destBlockBlob.CopyState.TotalBytes) * 100);
+                        progress = destBlobProperties.Value.CopyProgress.Split('/');
+                        tempProgress = (int)(Convert.ToDecimal(progress[0]) / Convert.ToDecimal(progress[1]) * 100);
 
                         //To reduce traces, only write when progress increased >=10
                         if (tempProgress >= (lastProgress + 10))
@@ -189,47 +209,86 @@ namespace ReplicateAMSv3.Managers
                         }
                     }
 
-                    System.Threading.Thread.Sleep(500);
+                    System.Threading.Thread.Sleep(100);
                 }
                 else
                 {
-                    Console.WriteLine($" --> Copying stopped {{destBlockBlob.CopyState.Status - destBlockBlob.CopyState.StatusDescription}}");
+                    Console.WriteLine($" --> Copying stopped {destBlobProperties.Value.BlobCopyStatus} - {destBlobProperties.Value.CopyStatusDescription}");
                     break;
                 }
             }
         }
 
-        private void CopyBlockBlobUsingLocalNetwork(CloudBlockBlob sourceBlobClient, CloudBlockBlob destBlockBlob)
+        private void CopyAssetAzCopy(BlobContainerClient sourceContainer, BlobContainerClient destinationContainer)
         {
-            using (var readStream = sourceBlobClient.OpenRead())
-            {
-                var totalSize = sourceBlobClient.Properties.Length;
-                UploadProgress uploadProgress = new UploadProgress(totalSize);
-                BlobRequestOptions blobRequestOptions = new BlobRequestOptions();
-                blobRequestOptions.MaximumExecutionTime = new TimeSpan(1, 0, 0);
-                blobRequestOptions.NetworkTimeout = new TimeSpan(0, 20, 0);
-                blobRequestOptions.ServerTimeout = new TimeSpan(0, 20, 0);
+            //Generate a read SAS token for source container that expired after 1 day
+            Uri sourceSAS = sourceContainer.GenerateSasUri(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.List, new DateTimeOffset(DateTime.Now.AddDays(1))
+            );
 
-                destBlockBlob.UploadFromStreamAsync(readStream, totalSize, null, blobRequestOptions, null, uploadProgress, new System.Threading.CancellationToken()).Wait();
-                uploadProgress = null;
+            //Generate read and write SAS token for destination container that expired after 1 day
+            Uri destinationSAS = destinationContainer.GenerateSasUri(BlobContainerSasPermissions.Read | BlobContainerSasPermissions.List | BlobContainerSasPermissions.Write,
+                new DateTimeOffset(DateTime.Now.AddDays(1)));
+
+            string copyCommand = string.Format(AZ_COPY_COMMAND, Miscellaneous.AzCopyExePath, sourceSAS, destinationSAS, Miscellaneous.AzCopyPreserveAccessTier);
+            bool writeOutput = false;
+            bool copyFinished = false;
+
+            using (Process cmd = new Process())
+            {
+                cmd.StartInfo.FileName = "cmd.exe";
+                cmd.StartInfo.RedirectStandardInput = true;
+                cmd.StartInfo.RedirectStandardOutput = true;
+                cmd.StartInfo.CreateNoWindow = true;
+                cmd.StartInfo.UseShellExecute = false;
+                cmd.Start();
+                cmd.StandardInput.WriteLine(copyCommand);
+
+                while (copyFinished == false)
+                {
+                    string azCopyOutputLine = cmd.StandardOutput.ReadLine();
+
+                    //Skip traces before starting the copying job
+                    if (azCopyOutputLine.Contains("Job", StringComparison.InvariantCultureIgnoreCase) && azCopyOutputLine.Contains("has started", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        writeOutput = true;
+                    }
+
+                    if (writeOutput && string.IsNullOrEmpty(azCopyOutputLine.Trim()) == false)
+                    {
+                        Helpers.WriteLine($"--> {azCopyOutputLine}", 4);
+                    }
+
+                    //Check when the copy job end
+                    if (azCopyOutputLine.Contains("Final Job Status:", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        copyFinished = true;
+                    }
+                }
             }
         }
 
-        private void CopyBlobDirectory(CloudBlobContainer sourceBlobContainer, CloudBlobContainer destinationBlobContainer, CloudBlobDirectory sourceBlobDirectory)
+        private void CopyBlockBlobUsingLocalNetwork(BlobClient sourceBlobClient, BlobClient destBlockBlob)
         {
-            Extensions.BlobType blobType;
-
-            foreach (var blobItem in sourceBlobDirectory.ListBlobs())
+            using (var readStream = sourceBlobClient.OpenRead())
             {
-                blobType = blobItem.GetBlobType();
-                if (blobType == Extensions.BlobType.BlockBlock)
+                var sourceBlobProperties = sourceBlobClient.GetProperties();
+                var totalSize = sourceBlobProperties.Value.ContentLength;
+
+                UploadProgressHandler uploadProgressHandler = new UploadProgressHandler(totalSize);
+
+                BlobUploadOptions blobUploadOptions = new BlobUploadOptions();
+                blobUploadOptions.ProgressHandler = uploadProgressHandler;
+                blobUploadOptions.TransferOptions = new StorageTransferOptions()
                 {
-                    CopyBlockBlob((blobItem as CloudBlockBlob).Name, sourceBlobContainer, destinationBlobContainer);
-                }
-                else if (blobType == Extensions.BlobType.Directory)
-                {
-                    CopyBlobDirectory(sourceBlobContainer, destinationBlobContainer, blobItem as CloudBlobDirectory);
-                }
+                    MaximumTransferSize = 4 * 1024 * 1024,
+                    InitialTransferSize = 4 * 1024 * 1024,
+                    MaximumConcurrency = 10
+                };
+
+
+                var uploadResult = destBlockBlob.UploadAsync(readStream, blobUploadOptions).Result;
+
+                uploadProgressHandler = null;
             }
         }
 

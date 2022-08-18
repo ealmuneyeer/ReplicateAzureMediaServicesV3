@@ -1,23 +1,23 @@
-﻿using Microsoft.Azure.Storage.Core.Util;
+﻿//using Microsoft.Azure.Storage.Core.Util;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace ReplicateAMSv3
 {
-    public class UploadProgress : IProgress<StorageProgress>
+    class UploadProgressHandler : IProgress<long>
     {
         private long _total = 0;
         private int _lastProgress = -1;
 
-        public UploadProgress(long total)
+        public UploadProgressHandler(long total)
         {
             _total = total;
         }
 
-        public void Report(StorageProgress value)
+        public void Report(long value)
         {
-            int tempProgress = (Int32)(Convert.ToDecimal(value.BytesTransferred) / Convert.ToDecimal(_total) * 100);
+            int tempProgress = (Int32)(value / Convert.ToDecimal(_total) * 100);
 
             if (tempProgress % 10 == 0 && tempProgress > _lastProgress)
             {

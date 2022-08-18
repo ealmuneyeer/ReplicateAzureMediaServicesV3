@@ -33,8 +33,21 @@ namespace ReplicateAMSv3.Managers
                 {
                     Helpers.WriteLine($"Copying streaming locator '{streamingLocator.Name}'...", 2);
 
-                    if (DestinationOperations.Get(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, streamingLocator.Name) == null)
+                    if (DestinationOperations.List(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, $"Name eq '{streamingLocator.Name}'").FirstOrDefault() == null)
                     {
+                        ListContentKeysResponse listContentKeysResponse = SourceOperations.ListContentKeys(SourceAuth.ResourceGroup, SourceAuth.AccountName, streamingLocator.Name);
+
+                        List<StreamingLocatorContentKey> contentKeyList = null;
+
+                        if (listContentKeysResponse.ContentKeys.Any())
+                        {
+                            contentKeyList = new List<StreamingLocatorContentKey>();
+                            foreach (var contentKey in listContentKeysResponse.ContentKeys)
+                            {
+                                contentKeyList.Add(new StreamingLocatorContentKey(Guid.NewGuid(), contentKey.Type, contentKey.LabelReferenceInStreamingPolicy, contentKey.Value, contentKey.PolicyName, contentKey.Tracks));
+                            }
+                        }
+
                         DestinationOperations.Create(DestinationAuth.ResourceGroup, DestinationAuth.AccountName, streamingLocator.Name, new StreamingLocator()
                         {
                             AssetName = streamingLocator.AssetName,
@@ -42,7 +55,7 @@ namespace ReplicateAMSv3.Managers
                             StartTime = streamingLocator.StartTime,
                             EndTime = streamingLocator.EndTime,
                             DefaultContentKeyPolicyName = streamingLocator.DefaultContentKeyPolicyName,
-                            ContentKeys = streamingLocator.ContentKeys.Count == 0 ? null : streamingLocator.ContentKeys,
+                            ContentKeys = contentKeyList,
                             Filters = streamingLocator.Filters.Count == 0 ? null : streamingLocator.Filters
                         });
 
