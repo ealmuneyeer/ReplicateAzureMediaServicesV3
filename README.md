@@ -32,10 +32,8 @@ It will replicate the following:
 
 ### How to use this tool
 To run this application you need to:
-<ol>
-  <li>Modify <b><i>appsettings.json</b></i> configuration file with your source and destination AMS accounts service principal authentication, and storage accounts name, key, and Url </li>
-  <li>f you want to copy the blobs using <b><i>AzCopy</i></b> you need to install it into your machine [Download AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10#download-azcopy)</li>
-</ol>
+1. Modify <b><i>appsettings.json</b></i> configuration file with your source and destination AMS accounts service principal authentication, and storage accounts name, key, and Url
+2. If you want to copy the blobs using <b><i>AzCopy</i></b> you need to install it into your machine [Download AzCopy](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10)
 
 <br>
 
